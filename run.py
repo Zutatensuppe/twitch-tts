@@ -30,6 +30,20 @@ _conf = conf.load_config()
 
 _tts_queue = queue.Queue()
 
+_stopped = False
+
+
+def start_tts():
+    global _stopped
+    _stopped = False
+
+
+def stop_tts():
+    global _stopped
+    _stopped = True
+    _tts_queue.empty()
+    pygame.mixer.music.stop()
+
 
 def queue_tts(text: str, lang: str):
     global _tts_queue
@@ -225,6 +239,13 @@ async def event_message(ctx):
         return
 
     if ctx.content.startswith("!"):
+        if ctx.content == '!tts start':
+            start_tts()
+        elif ctx.content == '!tts stop':
+            stop_tts()
+        return
+
+    if _stopped:
         return
 
     user = ctx.author.name.lower()

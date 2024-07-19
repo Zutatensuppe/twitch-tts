@@ -11,10 +11,11 @@ python = "^3.10,<3.11"
 requests = "^2.27.1"
 twitchio = "^2.1.4"
 pygame = "^2.1.2"
-
-[tool.poetry.dev-dependencies]
-black = "^21.12b0"
 pyinstaller = "^6.9.0"
+
+[tool.poetry.group.dev.dependencies]
+pyinstaller = "^6.9.0"
+black = "^24.4.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

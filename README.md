@@ -1,24 +1,30 @@
 # twitch-tts
 
-## Requirements
+## Usage (Release)
 
-- [python3](https://www.python.org/downloads/)
-- [poetry](https://python-poetry.org/docs/)
+1. Download the zip from the [latest release](https://github.com/Zutatensuppe/twitch-tts/releases/latest)
+2. Unzip the zip and adjust the `config.jsonc` file.
+3. Launch `tts.exe`
 
-## Usage
+## Usage (Development)
 
-1. Install dependencies
+1. Install prerequisites
+
+    - [python3](https://www.python.org/downloads/)
+    - [poetry](https://python-poetry.org/docs/)
+
+2. Install dependencies
 
     ```shell
     poetry install
     ```
 
-2. Copy `config_example.py` to `config.py` and adjust it where needed.
+3. Copy `config_example.jsonc` to `config.jsonc` and adjust it where needed.
 
     Required places are marked with `PLEASE_CONFIGURE`. The rest can be changed
     as needed.
 
-3. Run the bot
+4. Run the bot
 
     ```shell
     poetry run python run.py

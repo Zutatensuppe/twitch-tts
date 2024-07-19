@@ -1,9 +1,8 @@
 import constants
 
-import importlib
-import os
 import re
-import sys
+import json
+import os
 from dataclasses import dataclass
 
 
@@ -35,21 +34,28 @@ class Conf:
     deepl_lang_dict: object
 
 
+# very dumb removal of comments
+comment_re = re.compile(r"(^|,)\s*//.*")
 def load_config():
     try:
-        sys.path.append(os.path.join(os.path.dirname(__file__), "."))
-        config = importlib.import_module("config")
+      with open(f"{os.getcwd()}/config.jsonc") as file:
+        lines = []
+        for line in file:
+            if re.sub(comment_re, "", line).strip() == "":
+                continue
+            lines.append(line)
+        config = json.loads("\n".join(lines))
     except Exception as e:
         print(e)
-        print("Please make [config.py] and put it with twitchTransFN")
+        print("Please make [config.jsonc] and put it next to run")
         input()  # stop for error!!
 
     ###################################
     # fix some config errors ##########
     # lowercase channel and username ------
 
-    _Twitch_Channel = config.Twitch_Channel.lower()
-    _Trans_Username = config.Trans_Username.lower()
+    _Twitch_Channel = config['Twitch_Channel'].lower()
+    _Trans_Username = config['Trans_Username'].lower()
 
     # remove "#" mark ------
     if _Twitch_Channel.startswith("#"):
@@ -57,25 +63,25 @@ def load_config():
         _Twitch_Channel = _Twitch_Channel[1:]
 
     # remove "oauth:" mark ------
-    _Trans_OAUTH = config.Trans_OAUTH
+    _Trans_OAUTH = config['Trans_OAUTH']
     if _Trans_OAUTH.startswith("oauth:"):
         # print("Find 'oauth:' at OAUTH text! I remove 'oauth:' from 'config:Trans_OAUTH'")
         _Trans_OAUTH = _Trans_OAUTH[6:]
 
-    _Ignore_Lang = [x.strip() for x in config.Ignore_Lang]
-    _Ignore_Users = [str.lower(x.strip()) for x in config.Ignore_Users]
-    _Ignore_Line = [x.strip() for x in config.Ignore_Line]
-    _Delete_Words = [x.strip() for x in config.Delete_Words]
+    _Ignore_Lang = [x.strip() for x in config['Ignore_Lang']]
+    _Ignore_Users = [str.lower(x.strip()) for x in config['Ignore_Users']]
+    _Ignore_Line = [x.strip() for x in config['Ignore_Line']]
+    _Delete_Words = [x.strip() for x in config['Delete_Words']]
 
-    if config.AssignRandomLangToUser == True:
+    if config['AssignRandomLangToUser'] == True:
         _AssignRandomLangToUser = [key for key in constants.LANGUAGES.keys()]
     else:
-        _AssignRandomLangToUser = config.AssignRandomLangToUser
+        _AssignRandomLangToUser = config['AssignRandomLangToUser']
 
-    if config.GoogleTranslate_suffix not in constants.SERVICE_URL_SUFFIXES:
+    if config['GoogleTranslate_suffix'] not in constants.SERVICE_URL_SUFFIXES:
         _url_suffix = "co.jp"
     else:
-        _url_suffix = config.GoogleTranslate_suffix
+        _url_suffix = config['GoogleTranslate_suffix']
 
     return Conf(
         Trans_Username=_Trans_Username,
@@ -87,19 +93,19 @@ def load_config():
         Delete_Words=_Delete_Words,
         AssignRandomLangToUser=_AssignRandomLangToUser,
         url_suffix=_url_suffix,
-        Debug=config.Debug,
-        Translator=config.Translator,
-        UserToLangMap=config.UserToLangMap,
-        lang_SkipDetect=config.lang_SkipDetect,
-        lang_Default=config.lang_Default,
+        Debug=config['Debug'],
+        Translator=config['Translator'],
+        UserToLangMap=config['UserToLangMap'],
+        lang_SkipDetect=config['lang_SkipDetect'],
+        lang_Default=config['lang_Default'],
         TMP_DIR="./tmp",
-        lang_TransToHome=config.lang_TransToHome,
-        Bot_SendWhisper=config.Bot_SendWhisper,
-        Trans_TextColor=config.Trans_TextColor,
-        lang_HomeToOther=config.lang_HomeToOther,
-        TTS_IN=config.TTS_IN,
-        TTS_OUT=config.TTS_OUT,
-        ReadOnlyTheseLang=config.ReadOnlyTheseLang,
+        lang_TransToHome=config['lang_TransToHome'],
+        Bot_SendWhisper=config['Bot_SendWhisper'],
+        Trans_TextColor=config['Trans_TextColor'],
+        lang_HomeToOther=config['lang_HomeToOther'],
+        TTS_IN=config['TTS_IN'],
+        TTS_OUT=config['TTS_OUT'],
+        ReadOnlyTheseLang=config['ReadOnlyTheseLang'],
         TargetLangs=[key for key in constants.LANGUAGES.keys()],
         deepl_lang_dict=constants.DEEPL_LANG_DICT,
     )

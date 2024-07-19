@@ -1,2 +1,5 @@
 /tmp
 /__pycache__
+/build
+/dist
+/config.jsonc

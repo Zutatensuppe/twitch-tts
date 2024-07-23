@@ -1,7 +1,5 @@
 import constants
-
-import re
-import json
+import commentjson
 import os
 from dataclasses import dataclass
 
@@ -34,17 +32,10 @@ class Conf:
     deepl_lang_dict: object
 
 
-# very dumb removal of comments
-comment_re = re.compile(r"(^|,)\s*//.*")
 def load_config():
     try:
       with open(f"{os.getcwd()}/config.jsonc") as file:
-        lines = []
-        for line in file:
-            if re.sub(comment_re, "", line).strip() == "":
-                continue
-            lines.append(line)
-        config = json.loads("\n".join(lines))
+        config = commentjson.load(file)
     except Exception as e:
         print(e)
         print("Please make [config.jsonc] and put it next to run")

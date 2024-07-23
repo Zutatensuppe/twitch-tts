@@ -253,6 +253,20 @@ files = [
 ]
 
 [[package]]
+name = "commentjson"
+version = "0.9.0"
+description = "Add Python and JavaScript style comments in your JSON files."
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "commentjson-0.9.0.tar.gz", hash = "sha256:42f9f231d97d93aff3286a4dc0de39bfd91ae823d1d9eba9fa901fe0c7113dd4"},
+]
+
+[package.dependencies]
+lark-parser = ">=0.7.1,<0.8.0"
+
+[[package]]
 name = "deepl-translate"
 version = "1.2.0"
 description = ""
@@ -379,6 +393,17 @@ python-versions = ">=3.6.2,<4.0"
 files = [
     {file = "iso8601-1.0.2-py3-none-any.whl", hash = "sha256:d7bc01b1c2a43b259570bb307f057abc578786ea734ba2b87b836c5efc5bd443"},
     {file = "iso8601-1.0.2.tar.gz", hash = "sha256:27f503220e6845d9db954fb212b95b0362d8b7e6c1b2326a87061c3de93594b1"},
+]
+
+[[package]]
+name = "lark-parser"
+version = "0.7.8"
+description = "a modern parsing library"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "lark-parser-0.7.8.tar.gz", hash = "sha256:26215ebb157e6fb2ee74319aa4445b9f3b7e456e26be215ce19fdaaa901c20a4"},
 ]
 
 [[package]]
@@ -861,4 +886,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10,<3.11"
-content-hash = "464ab3da54a94679d412976b03d2da81fa1658edc110e91cb456c166cf682242"
+content-hash = "3a40d716af934789c1456e1d4335550600dc06a2c4eca6d07deac21711465cb5"

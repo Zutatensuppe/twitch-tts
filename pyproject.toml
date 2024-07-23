@@ -12,6 +12,7 @@ requests = "^2.27.1"
 twitchio = "^2.1.4"
 pygame = "^2.1.2"
 pyinstaller = "^6.9.0"
+commentjson = "^0.9.0"
 
 [tool.poetry.group.dev.dependencies]
 pyinstaller = "^6.9.0"

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "twitch-tts"
-version = "1.0.0"
+version = "1.1.0"
 description = ""
 authors = ["Zutatensuppe <oo.para@gmail.com>"]
 

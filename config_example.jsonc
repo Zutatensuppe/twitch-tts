@@ -31,6 +31,9 @@
   "Ignore_Line": [],
   "Delete_Words": [],
 
+  // set to the desired string links are replaced with, or set to False if no replacement should happen
+  "Delete_Links": "",
+
   // if there are entries in this array, users get assigned one of those
   // entries as their language. the user messages will then always be
   // interpreted as that language until the bot is restarted

@@ -13,6 +13,7 @@ class Conf:
     Ignore_Users: list[str]
     Ignore_Line: list[str]
     Delete_Words: list[str]
+    Delete_Links: any
     AssignRandomLangToUser: any
     url_suffix: any
     Debug: any
@@ -63,6 +64,7 @@ def load_config():
     _Ignore_Users = [str.lower(x.strip()) for x in config['Ignore_Users']]
     _Ignore_Line = [x.strip() for x in config['Ignore_Line']]
     _Delete_Words = [x.strip() for x in config['Delete_Words']]
+    _Delete_Links = config['Delete_Links'] if 'Delete_Links' in config else ''
 
     if config['AssignRandomLangToUser'] == True:
         _AssignRandomLangToUser = [key for key in constants.LANGUAGES.keys()]
@@ -82,6 +84,7 @@ def load_config():
         Ignore_Users=_Ignore_Users,
         Ignore_Line=_Ignore_Line,
         Delete_Words=_Delete_Words,
+        Delete_Links=_Delete_Links,
         AssignRandomLangToUser=_AssignRandomLangToUser,
         url_suffix=_url_suffix,
         Debug=config['Debug'],

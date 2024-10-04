@@ -15,6 +15,7 @@ import signal
 import sys
 import threading
 import time
+import re
 
 from datetime import datetime
 from gtts import gTTS
@@ -97,6 +98,15 @@ bot = Client(
     initial_channels=[_conf.Twitch_Channel],
 )
 _translator = google_translator(url_suffix=_conf.url_suffix)
+
+
+replace_links_regex = re.compile(r'https?://\S+')
+def replace_links(message: str):
+    if _conf.Delete_Links == False:
+        return message
+
+    message = replace_links_regex.sub(_conf.Delete_Links, message)
+    return message
 
 
 def replace_delete_words(message: str):
@@ -265,6 +275,7 @@ async def event_message(ctx):
             return
 
     in_text = replace_delete_words(in_text)
+    in_text = replace_links(in_text)
     in_text = replace_emotes(in_text, ctx)
     in_text = " ".join(in_text.split())
 

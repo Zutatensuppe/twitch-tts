@@ -9,6 +9,10 @@ class Conf:
     Trans_Username: any
     Twitch_Channel: any
     Trans_OAUTH: any
+
+    YoutubeChannelUrl: any
+    YoutubeApiKey: any
+
     Ignore_Lang: list[str]
     Ignore_Users: list[str]
     Ignore_Line: list[str]
@@ -80,6 +84,8 @@ def load_config():
         Trans_Username=_Trans_Username,
         Twitch_Channel=_Twitch_Channel,
         Trans_OAUTH=_Trans_OAUTH,
+        YoutubeChannelUrl = config['YoutubeChannelUrl'],
+        YoutubeApiKey = config['YoutubeApiKey'],
         Ignore_Lang=_Ignore_Lang,
         Ignore_Users=_Ignore_Users,
         Ignore_Line=_Ignore_Line,

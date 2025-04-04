@@ -1,6 +1,8 @@
 from google_translate import google_translator
+from googleapiclient.discovery import build
 import constants
 import conf
+import yt
 
 import deepl
 import logging
@@ -32,7 +34,6 @@ _conf = conf.load_config()
 _tts_queue = queue.Queue()
 
 _stopped = False
-
 
 def start_tts():
     global _stopped
@@ -68,6 +69,133 @@ def tts_thread_fn():
 def tts_thread():
     if _conf.TTS_IN or _conf.TTS_OUT:
         thread = threading.Thread(target=tts_thread_fn)
+        thread.start()
+
+
+def yt_on_message(item):
+    "Runs every time a message is sent in chat."
+
+    author = item["authorDetails"]["displayName"]
+    message = item["snippet"]["displayMessage"]
+    print(f"{author}: {message}")
+
+    if message.startswith("!"):
+        if message == '!tts start':
+            start_tts()
+        elif message == '!tts stop':
+            stop_tts()
+        return
+
+    if _stopped:
+        return
+
+    user = author.lower()
+
+    in_text = message
+    if user in _conf.Ignore_Users:
+        log.debug(f"{user} is in _Ignore_Users")
+        return
+
+    for w in _conf.Ignore_Line:
+        if w in in_text:
+            log.debug(f"{w} is in _Ignore_Line")
+            return
+
+    in_text = replace_delete_words(in_text)
+    in_text = replace_links(in_text)
+    # in_text = replace_emotes(in_text, ctx)
+    in_text = " ".join(in_text.split())
+
+    if not in_text:
+        log.debug(f"message is empty after cleanup")
+        return
+
+    log.debug(f"--- Detect Language ---")
+    lang_detect = determine_lang_detect(in_text, user)
+    log.debug(f"lang_detect: {lang_detect}")
+    log.debug(f"--- Select Destinate Language ---")
+    lang_dest = determine_lang_dest(lang_detect)
+    log.debug(f"lang_dest: {lang_dest}")
+
+    m = in_text.split(":")
+    if len(m) >= 2:
+        if m[0] in _conf.TargetLangs:
+            lang_dest = m[0]
+            in_text = ":".join(m[1:])
+    else:
+        if lang_detect in _conf.Ignore_Lang:
+            log.debug(f"lang_detect ({lang_detect}) is ignored, returning...")
+            return
+
+    log.debug(f"lang_dest: {lang_dest} in_text: {in_text}")
+
+    ret = {
+        "user": user,
+        "reactions": [],
+    }
+
+    ret["reactions"].append(
+        {
+            "type": "detected",
+            "sound": _conf.TTS_IN,
+            "lang": lang_detect,
+            "text": in_text,
+        }
+    )
+
+    if lang_detect != lang_dest:
+        log.debug(f"--- Translation ---")
+        ret["reactions"].append(
+            {
+                "type": "translated",
+                "sound": _conf.TTS_OUT,
+                "lang": lang_dest,
+                "text": translate_text(in_text, lang_detect, lang_dest),
+            }
+        )
+
+    react(ret)
+
+
+def yt_thread_fn():
+    youtube = build("youtube", "v3", developerKey=_conf.YoutubeApiKey)
+    channel_id = yt.resolve_channel_id(youtube, _conf.YoutubeChannelUrl)
+    while True:
+      log.debug(f"Checking if channel '{channel_id}' is live...")
+      video_id = yt.get_live_video_id(youtube, channel_id)
+
+      if not video_id:
+          log.debug("Channel is not live right now. Will check again in 10 seconds.")
+          time.sleep(10)
+          continue
+
+      log.debug(f"Live video found: {video_id}")
+      live_chat_id = yt.get_live_chat_id(youtube, video_id)
+      if not live_chat_id:
+          log.debug("Live chat not available. Will check again in 60 seconds.")
+          time.sleep(60)
+          continue
+
+      log.debug("Reading chat...")
+      next_page_token = None
+      while True:
+          response = youtube.liveChatMessages().list(
+              liveChatId=live_chat_id,
+              part="snippet,authorDetails",
+              pageToken=next_page_token
+          ).execute()
+
+          for item in response["items"]:
+              yt_on_message(item)
+
+          next_page_token = response.get("nextPageToken")
+          polling_interval = int(response["pollingIntervalMillis"]) / 1000.0
+          time.sleep(polling_interval)
+
+
+def yt_thread():
+    if _conf.YoutubeChannelUrl and _conf.YoutubeApiKey:
+        thread = threading.Thread(target=yt_thread_fn)
         thread.start()
 
 
@@ -125,8 +253,6 @@ def replace_emotes(message: str, ctx):
         log.debug(emote)
         emote_id, emote_pos = emote.split(":")
 
-        # 同一エモートが複数使われてたら，その数分，情報が入ってくる
-        # （例：1110537:4-14,16-26）
         log.debug(f"e_pos:{emote_pos}")
         if "," in emote_pos:
             ed_pos = emote_pos.split(",")
@@ -225,7 +351,6 @@ def translate_text(text: str, lang_detect: str, lang_dest: str) -> str:
     return ""
 
 
-# 起動時 ####################
 @bot.event()
 async def event_ready():
     "Called once when the bot goes online."
@@ -426,7 +551,10 @@ def main():
         log.debug("run, tts thread...")
         tts_thread()
 
-        log.debug("run, bot...")
+        log.debug("run, yt thread...")
+        yt_thread()
+
+        log.debug("run, twitch bot...")
         bot.run()
 
     except Exception as e:

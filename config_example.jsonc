@@ -6,6 +6,9 @@
   // you can refer to https://github.com/Zutatensuppe/twitch-emote-unlock#how-to-get-the-oauth_token-required-in-the-configtoml to see how to get this value
   "Trans_OAUTH": "",
 
+  "YoutubeChannelUrl": "", // for example https://www.youtube.com/@achan_jp
+  "YoutubeApiKey": "", // please refer to https://support.google.com/googleapi/answer/6158862?hl=en to see how you can get an api key
+
   //######################################################
   // OPTIONAL CONFIGS ####################################
   "Trans_TextColor": "Firebrick",

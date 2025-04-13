@@ -21,16 +21,6 @@ def get_live_video_id(youtube, channel_id):
         return items[0]["id"]["videoId"]
     return None
 
-def get_live_chat_id(youtube, video_id):
-    response = youtube.videos().list(
-        part="liveStreamingDetails",
-        id=video_id
-    ).execute()
-
-    items = response.get("items", [])
-    if items and "liveStreamingDetails" in items[0]:
-        return items[0]["liveStreamingDetails"].get("activeLiveChatId")
-    return None
 
 def resolve_channel_id(youtube, user_input):
     if user_input.startswith("@"):

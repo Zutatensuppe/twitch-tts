@@ -3,6 +3,7 @@ from googleapiclient.discovery import build
 import constants
 import conf
 import yt
+import pytchat
 
 import deepl
 import logging
@@ -75,9 +76,9 @@ def tts_thread():
 def yt_on_message(item):
     "Runs every time a message is sent in chat."
 
-    author = item["authorDetails"]["displayName"]
-    message = item["snippet"]["displayMessage"]
-    print(f"{author}: {message}")
+    author = item.author.name
+    message = item.message
+    log.debug(f"{author}: {message}")
 
     if message.startswith("!"):
         if message == '!tts start':
@@ -165,38 +166,24 @@ def yt_thread_fn():
       video_id = yt.get_live_video_id(youtube, channel_id)
 
       if not video_id:
-          log.debug("Channel is not live right now. Will check again in 10 seconds.")
-          time.sleep(10)
-          continue
-
-      log.debug(f"Live video found: {video_id}")
-      live_chat_id = yt.get_live_chat_id(youtube, video_id)
-      if not live_chat_id:
-          log.debug("Live chat not available. Will check again in 60 seconds.")
+          log.debug("Channel is not live right now. Will check again in 60 seconds.")
           time.sleep(60)
           continue
 
-      log.debug("Reading chat...")
-      next_page_token = None
-      while True:
-          response = youtube.liveChatMessages().list(
-              liveChatId=live_chat_id,
-              part="snippet,authorDetails",
-              pageToken=next_page_token
-          ).execute()
+      log.debug(f"Live video found: {video_id}, start reading chat...")
+      chat = pytchat.create(video_id=video_id, interruptable=False)
 
-          for item in response["items"]:
+      while chat.is_alive():
+          for item in chat.get().sync_items():
               yt_on_message(item)
-
-          next_page_token = response.get("nextPageToken")
-          polling_interval = int(response["pollingIntervalMillis"]) / 1000.0
-          time.sleep(polling_interval)
 
 
 def yt_thread():
     if _conf.YoutubeChannelUrl and _conf.YoutubeApiKey:
         thread = threading.Thread(target=yt_thread_fn)
         thread.start()
+    else:
+        log.debug("Youtube channel and API key not configured, skipping Youtube chat.")
 
 
 def create_tmp_dir(tmp_dir: str):
@@ -528,13 +515,10 @@ def synthesize(text: str, lang: str):
     synth_remove_file(tts_file)
 
 
-#####################################
-# sig handler  -------------
 def sig_handler(signum, frame) -> None:
     sys.exit(1)
 
 
-# メイン処理 ###########################
 def main():
     signal.signal(signal.SIGTERM, sig_handler)
 

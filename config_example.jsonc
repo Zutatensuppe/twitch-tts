@@ -3,7 +3,7 @@
 {
   "Twitch_Channel": "",
   "Trans_Username": "",
-  // you can refer to https://github.com/Zutatensuppe/twitch-emote-unlock#how-to-get-the-oauth_token-required-in-the-configtoml to see how to get this value
+  // you can refer to https://github.com/Zutatensuppe/twitch-tts to see how to get this value
   "Trans_OAUTH": "",
 
   "YoutubeChannelUrl": "", // for example https://www.youtube.com/@achan_jp

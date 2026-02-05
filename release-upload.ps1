@@ -8,3 +8,5 @@ mv run.exe tts.exe
 $version = (uv run poetry version -s)
 7z a -tzip ../build/twitch-tts-$version.zip *
 cd ..
+gh release create $version -t "twitch-tts-$version" --generate-notes
+gh release upload $version build/twitch-tts-$version.zip

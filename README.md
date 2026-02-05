@@ -11,12 +11,12 @@
 1. Install prerequisites
 
     - [python3](https://www.python.org/downloads/)
-    - [poetry](https://python-poetry.org/docs/)
+    - uv
 
 2. Install dependencies
 
     ```shell
-    poetry install
+    uv sync
     ```
 
 3. Copy `config_example.jsonc` to `config.jsonc` and adjust it where needed.
@@ -27,7 +27,7 @@
 4. Run the bot
 
     ```shell
-    poetry run python run.py
+    uv run python run.py
     ```
 
 ## How to get the `Trans_OAUTH` required in the config.jsonc

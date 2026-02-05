@@ -1,4 +1,4 @@
-import constants
+from . import constants
 import commentjson
 import os
 from dataclasses import dataclass

@@ -27,7 +27,7 @@
 4. Run the bot
 
     ```shell
-    uv run python run.py
+    uv run python -m twitch_tts.run
     ```
 
 ## How to get the `Trans_OAUTH` required in the config.jsonc

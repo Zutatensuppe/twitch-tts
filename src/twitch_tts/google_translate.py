@@ -5,7 +5,7 @@ import json, requests, random
 from urllib.parse import quote
 import urllib3
 import logging
-from constants import LANGUAGES
+from .constants import LANGUAGES
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())

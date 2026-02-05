@@ -1,8 +1,8 @@
-from google_translate import google_translator
+from .google_translate import google_translator
 from googleapiclient.discovery import build
-import constants
-import conf
-import yt
+from . import constants
+from . import conf
+from . import yt
 import pytchat
 
 import deepl
@@ -23,8 +23,12 @@ import re
 from datetime import datetime
 from gtts import gTTS
 from twitchio import Client
+from importlib import metadata
 
-version = "1.0.0"
+try:
+    version = metadata.version('twitch-tts')
+except metadata.PackageNotFoundError:
+    version = "unknown"
 
 pygame.mixer.init()
 

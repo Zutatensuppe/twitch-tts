@@ -1,5 +1,6 @@
 /tmp
 /__pycache__
+/src/twitch_tts/__pycache__
 /build
 /dist
 /config.jsonc

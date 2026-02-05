@@ -39,7 +39,7 @@ class Conf:
 
 def load_config():
     try:
-      with open(f"{os.getcwd()}/config.jsonc") as file:
+      with open(f"{os.getcwd()}/config.jsonc", encoding="utf-8") as file:
         config = commentjson.load(file)
     except Exception as e:
         print(e)

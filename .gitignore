@@ -1,7 +1,8 @@
-/tmp
 /__pycache__
-/src/twitch_tts/__pycache__
+/.venv
 /build
-/dist
 /config.jsonc
+/dist
 /run.spec
+/src/twitch_tts/__pycache__
+/tmp

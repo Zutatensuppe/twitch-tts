@@ -1,6 +1,6 @@
 # this is a very simple powershell script to create a release
-rm -r -fo build
-rm -r -fo dist
+If (Test-Path "build") { rm -r -fo build }
+If (Test-Path "dist") { rm -r -fo dist }
 uv run pyinstaller -F run.py
 cp config_example.jsonc dist/config.jsonc
 cd dist

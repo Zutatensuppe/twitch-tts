@@ -29,7 +29,7 @@ jobs:
       - name: Get project version
         id: get_version
         run: |
-          $version = (uv run poetry version -s).Trim()
+          $version = (uv version --short).Trim()
           echo "version=$version" >> $env:GITHUB_OUTPUT
         shell: pwsh
 

@@ -11,12 +11,12 @@
 1. Install prerequisites
 
     - [python3](https://www.python.org/downloads/)
-    - uv
+    - [uv](https://docs.astral.sh/uv/)
 
 2. Install dependencies
 
     ```shell
-    uv sync
+    uv sync --locked
     ```
 
 3. Copy `config_example.jsonc` to `config.jsonc` and adjust it where needed.

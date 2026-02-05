@@ -1,8 +1,8 @@
-from .google_translate import google_translator
+from twitch_tts.google_translate import google_translator
 from googleapiclient.discovery import build
-from . import constants
-from . import conf
-from . import yt
+from twitch_tts import constants
+from twitch_tts import conf
+from twitch_tts import yt
 import pytchat
 
 import deepl

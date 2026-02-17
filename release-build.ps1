@@ -2,6 +2,7 @@
 If (Test-Path "build") { rm -r -fo build }
 If (Test-Path "dist") { rm -r -fo dist }
 uv run pyinstaller -F src/twitch_tts/run.py
+uv run pyinstaller gui.spec
 cp config_example.jsonc dist/config.jsonc
 cd dist
 mv run.exe tts.exe

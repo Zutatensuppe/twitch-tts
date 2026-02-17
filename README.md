@@ -2,11 +2,47 @@
 
 ## Usage (Release)
 
+### GUI Version (Recommended for non-developers)
+
+1. Download the zip from the [latest release](https://github.com/Zutatensuppe/twitch-tts/releases/latest)
+2. Unzip the zip
+3. Launch `tts-gui.exe`
+4. Configure the bot using the visual interface:
+   - Fill in required fields (Twitch Channel, Bot Username, OAuth Token)
+   - Click "OAuth Help" for instructions on getting your OAuth token
+   - Adjust optional settings as needed
+   - Click "Save Config" to save your settings
+5. Click "Start Bot" in the Control tab to run the bot
+6. View real-time logs in the Logs tab
+
+### CLI Version (For developers or advanced users)
+
 1. Download the zip from the [latest release](https://github.com/Zutatensuppe/twitch-tts/releases/latest)
 2. Unzip the zip and adjust the `config.jsonc` file.
 3. Launch `tts.exe`
 
 ## Usage (Development)
+
+### Running the GUI
+
+1. Install prerequisites
+
+    - [python3](https://www.python.org/downloads/)
+    - [uv](https://docs.astral.sh/uv/)
+
+2. Install dependencies
+
+    ```shell
+    uv sync --locked
+    ```
+
+3. Run the GUI
+
+    ```shell
+    uv run python -m twitch_tts.gui_run
+    ```
+
+### Running the CLI
 
 1. Install prerequisites
 
@@ -29,6 +65,24 @@
     ```shell
     uv run python -m twitch_tts.run
     ```
+
+## GUI Features
+
+The GUI version provides an easy-to-use interface for non-developers:
+
+- **Control Tab**: Start/Stop the bot with visual status indicators
+- **Configuration Tab**: 
+  - Visual form for all settings with descriptions
+  - Built-in OAuth token help with step-by-step instructions
+  - Validation of required fields before saving
+  - Load/Save configuration without manual JSON editing
+- **Logs Tab**: 
+  - Real-time log viewing with color-coded log levels
+  - Auto-scroll toggle
+  - Save logs to file
+  - Clear logs functionality
+
+No need to manually edit JSON files or understand technical configuration!
 
 ## How to get the `Trans_OAUTH` required in the config.jsonc
 

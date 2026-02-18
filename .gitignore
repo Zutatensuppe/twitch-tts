@@ -6,3 +6,4 @@
 /run.spec
 /src/twitch_tts/__pycache__
 /tmp
+.tts_gui_settings.json

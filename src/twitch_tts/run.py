@@ -6,9 +6,9 @@ from twitch_tts import yt
 import pytchat
 
 import deepl
+import asyncio
 import logging
 import os
-
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame
 import queue
@@ -39,6 +39,8 @@ _conf = conf.load_config()
 _tts_queue = queue.Queue()
 
 _stopped = False
+_bot_loop = None
+
 
 def start_tts():
     global _stopped
@@ -50,6 +52,8 @@ def stop_tts():
     _stopped = True
     _tts_queue.empty()
     pygame.mixer.music.stop()
+    if bot and bot.loop and bot.loop.is_running():
+        asyncio.run_coroutine_threadsafe(bot.close(), bot.loop)
 
 
 def queue_tts(text: str, lang: str):
@@ -108,6 +112,7 @@ def yt_on_message(item):
 
     in_text = replace_delete_words(in_text)
     in_text = replace_links(in_text)
+    in_text = remove_emojis(in_text)
     # in_text = replace_emotes(in_text, ctx)
     in_text = " ".join(in_text.split())
 
@@ -212,19 +217,68 @@ if _conf.Debug:
 ##########################################
 # Simple echo bot.
 log.debug("XXX: simple echo bot")
-bot = Client(
-    token="oauth:" + _conf.Trans_OAUTH,
-    initial_channels=[_conf.Twitch_Channel],
-)
+bot = None
 _translator = google_translator(url_suffix=_conf.url_suffix)
+
+
+def reload_config():
+    """Reload config from disk and update runtime settings."""
+    global _conf, _translator, _user_to_language_map
+    _conf = conf.load_config()
+    _translator = google_translator(url_suffix=_conf.url_suffix)
+    _user_to_language_map = {}
+    if _conf.Debug:
+        log.setLevel(logging.DEBUG)
+    else:
+        log.setLevel(logging.INFO)
+
+
+def _create_bot():
+    """Create bot instance - must be called from the thread with the event loop"""
+    global bot
+    bot = Client(
+        token="oauth:" + _conf.Trans_OAUTH,
+        initial_channels=[_conf.Twitch_Channel],
+        loop=asyncio.get_event_loop(),
+    )
+    _register_bot_events()
 
 
 replace_links_regex = re.compile(r'https?://\S+')
 def replace_links(message: str):
+    # If Ignore_Links is enabled, always remove links
+    if _conf.Ignore_Links:
+        message = replace_links_regex.sub('', message)
+        return message
+    
     if _conf.Delete_Links == False:
         return message
 
     message = replace_links_regex.sub(_conf.Delete_Links, message)
+    return message
+
+
+# Regex to match most emoji characters
+emoji_regex = re.compile(
+    "["
+    "\U0001F600-\U0001F64F"  # emoticons
+    "\U0001F300-\U0001F5FF"  # symbols & pictographs
+    "\U0001F680-\U0001F6FF"  # transport & map symbols
+    "\U0001F1E0-\U0001F1FF"  # flags
+    "\U00002702-\U000027B0"  # dingbats
+    "\U000024C2-\U0001F251"  # enclosed characters
+    "\U0001F900-\U0001F9FF"  # supplemental symbols
+    "\U0001FA00-\U0001FA6F"  # chess symbols
+    "\U0001FA70-\U0001FAFF"  # symbols and pictographs extended-a
+    "\U00002600-\U000026FF"  # misc symbols
+    "\U0001F700-\U0001F77F"  # alchemical symbols
+    "]+", 
+    flags=re.UNICODE
+)
+
+def remove_emojis(message: str):
+    if _conf.Ignore_Emojis:
+        message = emoji_regex.sub('', message)
     return message
 
 
@@ -342,108 +396,118 @@ def translate_text(text: str, lang_detect: str, lang_dest: str) -> str:
     return ""
 
 
-@bot.event()
-async def event_ready():
-    "Called once when the bot goes online."
-    print(f"{_conf.Trans_Username} is online!")
-    if not _conf.Bot_SendWhisper:
-        return
+def _register_bot_events():
+    """Register event handlers on the bot instance"""
+    
+    @bot.event()
+    async def event_ready():
+        "Called once when the bot goes online."
+        print(f"{_conf.Trans_Username} is online!")
 
-    for c in bot.connected_channels:
-        if c.name == _conf.Twitch_Channel:
-            log.debug(f"sending whisper")
-            await c.whisper(f"/color {_conf.Trans_TextColor}")
-            await c.whisper(f"/me has landed!")
-
-
-@bot.event()
-async def event_message(ctx):
-    "Runs every time a message is sent in chat."
-
-    if not ctx.channel or not ctx.author:
-        # this is probably a whisper/private message, dont handle it!
-        return
-
-    if ctx.content.startswith("!"):
-        if ctx.content == '!tts start':
-            start_tts()
-        elif ctx.content == '!tts stop':
-            stop_tts()
-        return
-
-    if _stopped:
-        return
-
-    user = ctx.author.name.lower()
-
-    log.debug(f"echo: {ctx.echo}, {ctx.content}")
-    if ctx.echo:
-        return
-
-    in_text = ctx.content
-    if user in _conf.Ignore_Users:
-        log.debug(f"{user} is in _Ignore_Users")
-        return
-
-    for w in _conf.Ignore_Line:
-        if w in in_text:
-            log.debug(f"{w} is in _Ignore_Line")
+    @bot.event()
+    async def event_join(channel, user):
+        "Called when a user joins a channel."
+        if user.name.lower() != _conf.Trans_Username.lower():
+            return
+        if not _conf.Bot_SendWhisper:
+            return
+        if channel.name != _conf.Twitch_Channel:
             return
 
-    in_text = replace_delete_words(in_text)
-    in_text = replace_links(in_text)
-    in_text = replace_emotes(in_text, ctx)
-    in_text = " ".join(in_text.split())
+        log.debug(f"sending /color {_conf.Trans_TextColor}")
+        await channel.send(f"/color {_conf.Trans_TextColor}")
+        log.debug(f"sending startup message: {_conf.Bot_StartupMessage}")
+        await channel.send(_conf.Bot_StartupMessage)
 
-    if not in_text:
-        log.debug(f"message is empty after cleanup")
-        return
+    @bot.event()
+    async def event_message(ctx):
+        "Runs every time a message is sent in chat."
 
-    log.debug(f"--- Detect Language ---")
-    lang_detect = determine_lang_detect(in_text, user)
-    log.debug(f"lang_detect: {lang_detect}")
-    log.debug(f"--- Select Destinate Language ---")
-    lang_dest = determine_lang_dest(lang_detect)
-    log.debug(f"lang_dest: {lang_dest}")
-
-    m = in_text.split(":")
-    if len(m) >= 2:
-        if m[0] in _conf.TargetLangs:
-            lang_dest = m[0]
-            in_text = ":".join(m[1:])
-    else:
-        if lang_detect in _conf.Ignore_Lang:
-            log.debug(f"lang_detect ({lang_detect}) is ignored, returning...")
+        if not ctx.channel or not ctx.author:
+            # this is probably a whisper/private message, dont handle it!
             return
 
-    log.debug(f"lang_dest: {lang_dest} in_text: {in_text}")
+        if ctx.content.startswith("!"):
+            if ctx.content == '!tts start':
+                start_tts()
+            elif ctx.content == '!tts stop':
+                stop_tts()
+            return
 
-    ret = {
-        "user": user,
-        "reactions": [],
-    }
+        if _stopped:
+            return
 
-    ret["reactions"].append(
-        {
-            "type": "detected",
-            "sound": _conf.TTS_IN,
-            "lang": lang_detect,
-            "text": in_text,
+        user = ctx.author.name.lower()
+
+        log.debug(f"echo: {ctx.echo}, {ctx.content}")
+        if ctx.echo:
+            return
+
+        in_text = ctx.content
+        if user in _conf.Ignore_Users:
+            log.debug(f"{user} is in _Ignore_Users")
+            return
+
+        for w in _conf.Ignore_Line:
+            if w in in_text:
+                log.debug(f"{w} is in _Ignore_Line")
+                return
+
+        in_text = replace_delete_words(in_text)
+        in_text = replace_links(in_text)
+        in_text = remove_emojis(in_text)
+        in_text = replace_emotes(in_text, ctx)
+        in_text = " ".join(in_text.split())
+
+        if not in_text:
+            log.debug(f"message is empty after cleanup")
+            return
+
+        log.debug(f"--- Detect Language ---")
+        lang_detect = determine_lang_detect(in_text, user)
+        log.debug(f"lang_detect: {lang_detect}")
+        log.debug(f"--- Select Destinate Language ---")
+        lang_dest = determine_lang_dest(lang_detect)
+        log.debug(f"lang_dest: {lang_dest}")
+
+        m = in_text.split(":")
+        if len(m) >= 2:
+            if m[0] in _conf.TargetLangs:
+                lang_dest = m[0]
+                in_text = ":".join(m[1:])
+        else:
+            if lang_detect in _conf.Ignore_Lang:
+                log.debug(f"lang_detect ({lang_detect}) is ignored, returning...")
+                return
+
+        log.debug(f"lang_dest: {lang_dest} in_text: {in_text}")
+
+        ret = {
+            "user": user,
+            "reactions": [],
         }
-    )
 
-    if lang_detect != lang_dest:
-        log.debug(f"--- Translation ---")
         ret["reactions"].append(
             {
-                "type": "translated",
-                "sound": _conf.TTS_OUT,
-                "lang": lang_dest,
-                "text": translate_text(in_text, lang_detect, lang_dest),
+                "type": "detected",
+                "sound": _conf.TTS_IN,
+                "lang": lang_detect,
+                "text": in_text,
             }
         )
 
-    react(ret)
+        if lang_detect != lang_dest:
+            log.debug(f"--- Translation ---")
+            ret["reactions"].append(
+                {
+                    "type": "translated",
+                    "sound": _conf.TTS_OUT,
+                    "lang": lang_dest,
+                    "text": translate_text(in_text, lang_detect, lang_dest),
+                }
+            )
+
+        react(ret)
 
 
 def react(ret):
@@ -523,10 +587,11 @@ def sig_handler(signum, frame) -> None:
     sys.exit(1)
 
 
-def main():
-    signal.signal(signal.SIGTERM, sig_handler)
-
+def run_bot_core():
+    """Core bot functionality without signal handlers - safe for threading"""
+    global _bot_loop, bot
     try:
+        reload_config()
         print(f"twitch-tts (Version: {version})")
         print(f"Connect to the channel : {_conf.Twitch_Channel}")
         print(f"Translator Username    : {_conf.Trans_Username}")
@@ -542,9 +607,31 @@ def main():
         log.debug("run, yt thread...")
         yt_thread()
 
+        log.debug("run, creating bot...")
+        _create_bot()
+
         log.debug("run, twitch bot...")
+        _bot_loop = bot.loop
         bot.run()
 
+    except RuntimeError as e:
+        # Ignore "Event loop stopped" error during shutdown
+        if "Event loop stopped" not in str(e):
+            log.debug(e)
+            raise
+    except Exception as e:
+        log.debug(e)
+        raise  # Re-raise for GUI to handle
+    finally:
+        _bot_loop = None
+        bot = None
+
+
+def main():
+    signal.signal(signal.SIGTERM, sig_handler)
+
+    try:
+        run_bot_core()
     except Exception as e:
         log.debug(e)
         input()  # stop for error!!

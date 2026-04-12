@@ -47,6 +47,35 @@ class ClickOnlyComboBox(QComboBox):
                            Qt.Key_Up, Qt.Key_Down):
             super().keyPressEvent(event)
 
+    def wheelEvent(self, event):
+        # Prevent accidental mouse-wheel changes while scrolling the settings page.
+        if self.view().isVisible():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
+
+def populate_language_combo(combo):
+    combo.clear()
+    combo.setPlaceholderText("Select language…")
+    for code, name in sorted(constants.LANGUAGES.items(), key=lambda x: x[1]):
+        combo.addItem(f"{name.title()} ({code})", code)
+    combo.setCurrentIndex(-1)
+
+
+def set_language_combo_value(combo, code):
+    normalized = str(code).strip().lower() if code is not None else ""
+    if not normalized:
+        combo.setCurrentIndex(-1)
+        return
+
+    idx = combo.findData(normalized)
+    if idx >= 0:
+        combo.setCurrentIndex(idx)
+        return
+
+    combo.setCurrentIndex(-1)
+
 
 # ---------------------------------------------------------------------------
 # FlowLayout — items wrap to the next line when the width is exceeded
@@ -280,9 +309,7 @@ class UserLangMapWidget(QWidget):
         combo = ClickOnlyComboBox()
         combo.setFocusPolicy(Qt.ClickFocus)
         combo.setMaxVisibleItems(20)
-        combo.addItem("", "")
-        for code, name in sorted(constants.LANGUAGES.items(), key=lambda x: x[1]):
-            combo.addItem(f"{name.title()} ({code})", code)
+        populate_language_combo(combo)
         combo.currentIndexChanged.connect(lambda: self.data_changed.emit())
         return combo
 
@@ -643,9 +670,7 @@ class TwitchTTSGUI(QMainWindow):
             combo = ClickOnlyComboBox()
             combo.setFocusPolicy(Qt.ClickFocus)
             combo.setMaxVisibleItems(20)
-            combo.addItem("", "")
-            for code, name in sorted(constants.LANGUAGES.items(), key=lambda x: x[1]):
-                combo.addItem(f"{name.title()} ({code})", code)
+            populate_language_combo(combo)
             combo.currentIndexChanged.connect(self.mark_dirty)
             return combo
 
@@ -1226,13 +1251,7 @@ class TwitchTTSGUI(QMainWindow):
         # Language combo fields
         lang_combo_fields = ['lang_TransToHome', 'lang_HomeToOther', 'lang_Default']
         for field in lang_combo_fields:
-            if field in self.config_data:
-                code = str(self.config_data[field])
-                idx = self.config_widgets[field].findData(code)
-                if idx >= 0:
-                    self.config_widgets[field].setCurrentIndex(idx)
-                else:
-                    self.config_widgets[field].setCurrentText(code)
+            set_language_combo_value(self.config_widgets[field], self.config_data.get(field, ""))
 
         # GoogleTranslate_suffix combo
         if 'GoogleTranslate_suffix' in self.config_data:

@@ -27,12 +27,9 @@ import re
 from datetime import datetime
 from gtts import gTTS
 from twitchio import Client
-from importlib import metadata
+from twitch_tts.versioning import get_version
 
-try:
-    version = metadata.version('twitch-tts')
-except metadata.PackageNotFoundError:
-    version = "unknown"
+version = get_version()
 
 pygame.mixer.init()
 

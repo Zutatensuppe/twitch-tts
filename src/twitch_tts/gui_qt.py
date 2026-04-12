@@ -30,6 +30,7 @@ from PySide6.QtGui import QFont, QColor, QTextCharFormat, QAction, QPixmap, QIco
 from . import conf
 from . import constants
 from . import run as bot_runner
+from .versioning import get_version
 
 
 # ---------------------------------------------------------------------------
@@ -1555,11 +1556,7 @@ class TwitchTTSGUI(QMainWindow):
     # About
     # ------------------------------------------------------------------
     def show_about(self):
-        try:
-            from importlib import metadata
-            version = metadata.version('twitch-tts')
-        except:
-            version = "unknown"
+        version = get_version()
 
         QMessageBox.about(self, "About Twitch TTS Bot",
             f"Twitch TTS Bot - GUI Version\n"

@@ -536,7 +536,7 @@ class _DownloadCancelled(Exception):
 class TwitchTTSGUI(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Twitch TTS Bot")
+        self.setWindowTitle(f"Twitch TTS Bot v{get_version()}")
         self.setMinimumSize(900, 700)
 
         # State

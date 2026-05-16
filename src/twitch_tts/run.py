@@ -1,3 +1,11 @@
+import certifi
+import os
+
+# Ensure SSL certificates are found in PyInstaller bundles
+# Must happen before any import that creates HTTPS clients (e.g. pytchat)
+# Always overwrite — a previous process may have set a now-deleted path
+os.environ['SSL_CERT_FILE'] = certifi.where()
+
 from twitch_tts.google_translate import google_translator
 from googleapiclient.discovery import build
 from twitch_tts import constants
@@ -5,15 +13,10 @@ from twitch_tts import conf
 from twitch_tts import yt
 import pytchat
 
-import certifi
 import deepl
 import asyncio
 import logging
-import os
 
-# Ensure SSL certificates are found in PyInstaller bundles
-# Always overwrite — a previous process may have set a now-deleted path
-os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame
 import queue
@@ -274,7 +277,7 @@ emoji_regex = re.compile(
     "\U0001FA70-\U0001FAFF"  # symbols and pictographs extended-a
     "\U00002600-\U000026FF"  # misc symbols
     "\U0001F700-\U0001F77F"  # alchemical symbols
-    "]+", 
+    "]+",
     flags=re.UNICODE
 )
 
@@ -423,7 +426,7 @@ def translate_text(text: str, lang_detect: str, lang_dest: str) -> str:
 
 def _register_bot_events():
     """Register event handlers on the bot instance"""
-    
+
     @bot.event()
     async def event_ready():
         "Called once when the bot goes online."

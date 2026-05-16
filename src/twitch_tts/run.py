@@ -590,6 +590,7 @@ def synth_play_file(file: str):
     try:
         log.debug("playing sound via pygame")
         pygame.mixer.music.load(file)
+        pygame.mixer.music.set_volume(_conf.TTS_Volume)
         pygame.mixer.music.play()
         # now wait until the song is over
         while pygame.mixer.music.get_busy():

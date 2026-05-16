@@ -38,6 +38,7 @@ class Conf:
     lang_HomeToOther: any
     TTS_IN: any
     TTS_OUT: any
+    TTS_Volume: float
     Send_Translation_To_Chat: bool
     ReadOnlyTheseLang: any
     TargetLangs: list[str]
@@ -122,6 +123,7 @@ def load_config():
         lang_HomeToOther=config['lang_HomeToOther'],
         TTS_IN=config['TTS_IN'],
         TTS_OUT=config['TTS_OUT'],
+        TTS_Volume=float(config.get('TTS_Volume', 1.0)),
         Send_Translation_To_Chat=config.get('Send_Translation_To_Chat', False),
         ReadOnlyTheseLang=config['ReadOnlyTheseLang'],
         TargetLangs=[key for key in constants.LANGUAGES.keys()],

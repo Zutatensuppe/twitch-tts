@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QComboBox, QGroupBox, QFormLayout, QScrollArea, QFrame,
     QMessageBox, QFileDialog, QMenuBar, QMenu, QSplitter, QDialog,
     QDialogButtonBox, QTextBrowser, QSizePolicy, QToolButton, QLayout,
-    QWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView
+    QWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView, QSlider
 )
 from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize, QRect, QPoint
 from PySide6.QtGui import QFont, QColor, QTextCharFormat, QAction, QPixmap, QIcon
@@ -622,6 +622,7 @@ class TwitchTTSGUI(QMainWindow):
             'lang_SkipDetect': '<b>Skip Language Detection</b><br><br>If enabled, the default language will be used for all texts. No automatic detection of the language will happen.',
             'TTS_IN': '<b>TTS for Original Messages</b><br><br>Read incoming chat messages aloud in their detected language.',
             'TTS_OUT': '<b>TTS for Translated Messages</b><br><br>Read the translated version of messages aloud (requires translation to be configured).',
+            'TTS_Volume': '<b>TTS Volume</b><br><br>Controls the playback volume for text-to-speech.<br><br>0% = mute, 100% = full volume.',
             'ReadOnlyTheseLang': '<b>TTS Only for These Languages</b><br><br>If you want TTS for only certain languages, add them here.<br>Leave empty for all languages.',
             'Ignore_Lang': '<b>Ignore Languages</b><br><br>Do not translate messages detected as these languages.',
             'Ignore_Users': '<b>Ignore Users</b><br><br>Do not process messages from these users (comma-separated, case-insensitive).',
@@ -813,6 +814,26 @@ class TwitchTTSGUI(QMainWindow):
         tts_check_layout.addWidget(self.config_widgets['TTS_OUT'])
         tts_check_layout.addWidget(create_help_button('TTS_OUT', "TTS for Output"))
         tts_form.addRow("", tts_check_layout)
+
+        # Volume slider (0–100, maps to 0.0–1.0)
+        volume_wrapper = QWidget()
+        volume_layout = QHBoxLayout()
+        volume_layout.setContentsMargins(0, 0, 0, 0)
+        volume_slider = QSlider(Qt.Horizontal)
+        volume_slider.setRange(0, 100)
+        volume_slider.setValue(100)
+        volume_slider.setTickPosition(QSlider.TicksBelow)
+        volume_slider.setTickInterval(10)
+        volume_label = QLabel("100%")
+        volume_label.setFixedWidth(40)
+        volume_slider.valueChanged.connect(lambda v: volume_label.setText(f"{v}%"))
+        volume_slider.valueChanged.connect(self.mark_dirty)
+        volume_layout.addWidget(volume_slider)
+        volume_layout.addWidget(volume_label)
+        volume_wrapper.setLayout(volume_layout)
+        self.config_widgets['TTS_Volume'] = volume_slider
+        self._tts_volume_label = volume_label
+        add_field_with_help(tts_form, "Volume", volume_wrapper, 'TTS_Volume')
 
         self.config_widgets['ReadOnlyTheseLang'] = LanguageTagInput()
         self.config_widgets['ReadOnlyTheseLang'].tags_changed.connect(self.mark_dirty)
@@ -1083,6 +1104,10 @@ class TwitchTTSGUI(QMainWindow):
             vals['AssignRandomLangToUser_enabled'] = w_enabled.isChecked()
         if w_tags:
             vals['AssignRandomLangToUser_tags'] = tuple(w_tags.get_tags())
+        # TTS_Volume
+        w = self.config_widgets.get('TTS_Volume')
+        if w:
+            vals['TTS_Volume'] = w.value()
         return vals
 
     def mark_dirty(self, *_args):
@@ -1284,6 +1309,13 @@ class TwitchTTSGUI(QMainWindow):
             if field in self.config_widgets:
                 self.config_widgets[field].setChecked(self.config_data.get(field, default))
 
+        # TTS Volume (0.0–1.0 in config, 0–100 in slider)
+        volume_val = self.config_data.get('TTS_Volume', 1.0)
+        volume_int = max(0, min(100, int(float(volume_val) * 100)))
+        if 'TTS_Volume' in self.config_widgets:
+            self.config_widgets['TTS_Volume'].setValue(volume_int)
+            self._tts_volume_label.setText(f"{volume_int}%")
+
         # Tag fields
         tag_fields = ['Ignore_Lang', 'Ignore_Users', 'Ignore_Line', 'Delete_Words', 'ReadOnlyTheseLang']
         for field in tag_fields:
@@ -1376,6 +1408,10 @@ class TwitchTTSGUI(QMainWindow):
         for field in bool_fields:
             if field in self.config_widgets:
                 config[field] = self.config_widgets[field].isChecked()
+
+        # TTS Volume (slider 0–100 → config 0.0–1.0)
+        if 'TTS_Volume' in self.config_widgets:
+            config['TTS_Volume'] = round(self.config_widgets['TTS_Volume'].value() / 100.0, 2)
 
         # Tag fields
         tag_fields = ['Ignore_Lang', 'Ignore_Users', 'Ignore_Line', 'Delete_Words', 'ReadOnlyTheseLang']

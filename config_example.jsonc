@@ -65,6 +65,9 @@
   "TTS_IN": true,
   "TTS_OUT": false,
 
+  // Volume for TTS playback (0.0 = mute, 1.0 = full volume)
+  "TTS_Volume": 1.0,
+
   // Send translated messages to Twitch chat (format: [language] username: text)
   "Send_Translation_To_Chat": false,
 

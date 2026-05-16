@@ -22,14 +22,16 @@ from PySide6.QtWidgets import (
     QComboBox, QGroupBox, QFormLayout, QScrollArea, QFrame,
     QMessageBox, QFileDialog, QMenuBar, QMenu, QSplitter, QDialog,
     QDialogButtonBox, QTextBrowser, QSizePolicy, QToolButton, QLayout,
-    QWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView, QSlider
+    QWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView, QSlider,
+    QProgressDialog
 )
-from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize, QRect, QPoint
+from PySide6.QtCore import Qt, QTimer, Signal, QObject, QSize, QRect, QPoint, QThread
 from PySide6.QtGui import QFont, QColor, QTextCharFormat, QAction, QPixmap, QIcon
 
 from . import conf
 from . import constants
 from . import run as bot_runner
+from . import updater
 from .versioning import get_version
 
 
@@ -477,6 +479,58 @@ class StdoutRedirector:
 
 
 # ---------------------------------------------------------------------------
+# Update workers (background threads)
+# ---------------------------------------------------------------------------
+class UpdateCheckWorker(QThread):
+    """Checks GitHub for a newer release in a background thread."""
+    result_ready = Signal(dict)
+
+    def run(self):
+        from .versioning import get_version
+        info = updater.check_for_update(get_version())
+        self.result_ready.emit(info or {})
+
+
+class UpdateDownloadWorker(QThread):
+    """Downloads the release zip in a background thread."""
+    progress = Signal(int, int)        # bytes_downloaded, total_bytes
+    finished_signal = Signal(str, str) # zip_path, error_message
+
+    def __init__(self, asset_url: str, parent=None):
+        super().__init__(parent)
+        self.asset_url = asset_url
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
+
+    def run(self):
+        try:
+            zip_path = updater.download_update(
+                self.asset_url,
+                progress_callback=self._on_progress,
+            )
+            if self._cancelled:
+                updater.cleanup_download(zip_path)
+                self.finished_signal.emit("", "cancelled")
+            else:
+                self.finished_signal.emit(zip_path, "")
+        except _DownloadCancelled:
+            self.finished_signal.emit("", "cancelled")
+        except Exception as e:
+            self.finished_signal.emit("", str(e))
+
+    def _on_progress(self, downloaded, total):
+        if self._cancelled:
+            raise _DownloadCancelled()
+        self.progress.emit(downloaded, total)
+
+
+class _DownloadCancelled(Exception):
+    pass
+
+
+# ---------------------------------------------------------------------------
 # Main GUI
 # ---------------------------------------------------------------------------
 class TwitchTTSGUI(QMainWindow):
@@ -514,6 +568,13 @@ class TwitchTTSGUI(QMainWindow):
         if self.autostart_check.isChecked():
             QTimer.singleShot(500, self.start_bot)
 
+        # Clean up leftover .old files from previous update
+        updater.cleanup_old_files()
+
+        # Auto-check for updates on startup (if enabled)
+        if self.auto_update_check.isChecked():
+            QTimer.singleShot(2000, lambda: self._check_for_updates(manual=False))
+
     # ------------------------------------------------------------------
     # Menu
     # ------------------------------------------------------------------
@@ -526,6 +587,10 @@ class TwitchTTSGUI(QMainWindow):
         file_menu.addAction(exit_action)
 
         help_menu = menubar.addMenu("Help")
+        update_action = QAction("Check for Updates…", self)
+        update_action.triggered.connect(lambda: self._check_for_updates(manual=True))
+        help_menu.addAction(update_action)
+        help_menu.addSeparator()
         about_action = QAction("About", self)
         about_action.triggered.connect(self.show_about)
         help_menu.addAction(about_action)
@@ -579,6 +644,10 @@ class TwitchTTSGUI(QMainWindow):
         self.warn_on_exit_check = QCheckBox("Warn on exit")
         self.warn_on_exit_check.setChecked(True)
         sb_layout.addWidget(self.warn_on_exit_check)
+
+        self.auto_update_check = QCheckBox("Check for updates on startup")
+        self.auto_update_check.setChecked(True)
+        sb_layout.addWidget(self.auto_update_check)
 
         sb_layout.addStretch()
         root_layout.addWidget(sidebar)
@@ -1150,6 +1219,7 @@ class TwitchTTSGUI(QMainWindow):
             self.auto_scroll_check.setChecked(state.get('auto_scroll', True))
             self.verbose_logs_check.setChecked(state.get('verbose_logs', False))
             self.warn_on_exit_check.setChecked(state.get('warn_on_exit', True))
+            self.auto_update_check.setChecked(state.get('auto_update_check', True))
             if state.get('verbose_logs', False):
                 self.update_log_format()
         except (FileNotFoundError, json.JSONDecodeError):
@@ -1163,6 +1233,7 @@ class TwitchTTSGUI(QMainWindow):
             'auto_scroll': self.auto_scroll_check.isChecked(),
             'verbose_logs': self.verbose_logs_check.isChecked(),
             'warn_on_exit': self.warn_on_exit_check.isChecked(),
+            'auto_update_check': self.auto_update_check.isChecked(),
         }
         try:
             with open(self._ui_state_path, 'w') as f:
@@ -1589,6 +1660,93 @@ class TwitchTTSGUI(QMainWindow):
             self.info_label.setText("")
 
     # ------------------------------------------------------------------
+    # Auto-updater
+    # ------------------------------------------------------------------
+    def _check_for_updates(self, manual: bool = False):
+        """Check for updates in a background thread."""
+        if hasattr(self, '_update_worker') and self._update_worker.isRunning():
+            return
+        self._update_manual = manual
+        self._update_worker = UpdateCheckWorker()
+        self._update_worker.result_ready.connect(self._on_update_check_done)
+        self._update_worker.start()
+
+    def _on_update_check_done(self, info: dict):
+        """Called on the main thread when the update check finishes."""
+        if not info:
+            if self._update_manual:
+                QMessageBox.information(self, "Updates",
+                    "You are running the latest version.")
+            return
+
+        version = info["version"]
+        reply = QMessageBox.question(
+            self, "Update Available",
+            f"A new version ({version}) is available.\n\n"
+            f"Current version: {get_version()}\n\n"
+            f"Do you want to update now?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes,
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        self._download_and_apply_update(info)
+
+    def _download_and_apply_update(self, info: dict):
+        """Download the update zip with a progress dialog, apply, and restart."""
+        if hasattr(self, '_download_worker') and self._download_worker.isRunning():
+            return
+        progress = QProgressDialog(
+            f"Downloading twitch-tts {info['version']}…", "Cancel", 0, 100, self
+        )
+        progress.setWindowTitle("Updating")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+
+        self._download_worker = UpdateDownloadWorker(info["asset_url"])
+        self._download_worker.progress.connect(
+            lambda downloaded, total: progress.setValue(
+                int(downloaded * 100 / total) if total > 0 else 0
+            )
+        )
+
+        def on_download_done(zip_path: str, error_msg: str):
+            progress.close()
+            if error_msg:
+                if error_msg != "cancelled":
+                    QMessageBox.critical(self, "Update Failed",
+                        f"Download failed:\n{error_msg}")
+                return
+            try:
+                updated = updater.apply_update(zip_path)
+                updater.cleanup_download(zip_path)
+            except Exception as e:
+                QMessageBox.critical(self, "Update Failed",
+                    f"Could not apply update:\n{e}")
+                return
+
+            if not updated:
+                QMessageBox.warning(self, "Update",
+                    "No files were updated. Are you running from a release build?")
+                return
+
+            files_str = ", ".join(updated)
+            reply = QMessageBox.information(
+                self, "Update Complete",
+                f"Updated: {files_str}\n\nThe application will now restart.",
+                QMessageBox.Ok,
+            )
+            if self.bot_running:
+                self.stop_bot()
+            self._restarting = True
+            updater.restart_app()
+
+        self._download_worker.finished_signal.connect(on_download_done)
+        progress.canceled.connect(self._download_worker.cancel)
+        self._download_worker.start()
+
+    # ------------------------------------------------------------------
     # About
     # ------------------------------------------------------------------
     def show_about(self):
@@ -1613,6 +1771,13 @@ class TwitchTTSGUI(QMainWindow):
 
         if hasattr(self, 'stdout_redirector'):
             sys.stdout = self.stdout_redirector.original_stdout
+
+        # Skip confirmation when restarting for an update
+        if getattr(self, '_restarting', False):
+            if self.bot_running:
+                self.stop_bot()
+            event.accept()
+            return
 
         if self.bot_running:
             if self.warn_on_exit_check.isChecked():

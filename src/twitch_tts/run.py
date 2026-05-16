@@ -12,7 +12,8 @@ import logging
 import os
 
 # Ensure SSL certificates are found in PyInstaller bundles
-os.environ.setdefault('SSL_CERT_FILE', certifi.where())
+# Always overwrite — a previous process may have set a now-deleted path
+os.environ['SSL_CERT_FILE'] = certifi.where()
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame
 import queue

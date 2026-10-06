@@ -1,9 +1,10 @@
-/__pycache__
+__pycache__/
 /.venv
 /build
 /config.jsonc
 /dist
-/src/twitch_tts/__pycache__
 /tmp
 .tts_gui_settings.json
 /logs
+*.exe
+*.bak

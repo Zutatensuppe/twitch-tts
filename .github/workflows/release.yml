@@ -20,6 +20,12 @@ jobs:
       - name: Install dependencies with uv
         run: uv sync --locked
 
+      - name: Run tests
+        shell: pwsh
+        run: |
+          Copy-Item config_example.jsonc config.jsonc
+          uv run python -m unittest discover -s tests
+
       - name: Run release build script
         shell: pwsh
         run: ./release-build.ps1

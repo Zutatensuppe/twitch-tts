@@ -66,17 +66,27 @@
     uv run python -m twitch_tts.run
     ```
 
+### Running the tests
+
+```shell
+uv run python -m unittest discover -s tests
+```
+
+The release build runs these too and stops if they fail. For checking the
+updater with a real build (download, replace, restart), see
+[docs/testing-the-updater.md](docs/testing-the-updater.md).
+
 ## GUI Features
 
 The GUI version provides an easy-to-use interface for non-developers:
 
 - **Control Tab**: Start/Stop the bot with visual status indicators
-- **Configuration Tab**: 
+- **Configuration Tab**:
   - Visual form for all settings with descriptions
   - Built-in OAuth token help with step-by-step instructions
   - Validation of required fields before saving
   - Load/Save configuration without manual JSON editing
-- **Logs Tab**: 
+- **Logs Tab**:
   - Real-time log viewing with color-coded log levels
   - Auto-scroll toggle
   - Save logs to file
